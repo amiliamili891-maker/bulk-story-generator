@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bulk Instagram Story Generator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+  --text: #1a1a1a;
+  --text-secondary: #666;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover { background: #f0f0f0; }
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn-danger:hover { background: #fef2f2; }
+
+/* Main container */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface);
+  margin-bottom: 24px;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+  border-color: var(--accent);
+  background: #f0f0ff;
+}
+
+.upload-zone-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.upload-zone h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.upload-zone p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.upload-zone input[type="file"] { display: none; }
+
+/* Settings bar */
+.settings-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.setting-group select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 200px;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.toolbar-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* Grid item */
+.grid-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.grid-item:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.grid-item.excluded {
+  opacity: 0.4;
+}
+
+.grid-item-preview {
+  position: relative;
+  width: 100%;
+  padding-top: 177.78%; /* 16:9 inverted = 9:16 */
+  background: #1a1a1a;
+  overflow: hidden;
+}
+
+.grid-item-preview canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.grid-item-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.grid-item-info {
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grid-item-filename {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.grid-item-customized {
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+/* Editor modal */
+.editor-modal {
+  background: var(--surface);
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.editor-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.editor-nav-counter {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 60px;
+  text-align: center;
+}
+
+.editor-body {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .editor-body { flex-direction: column; }
+}
+
+.editor-preview-container {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.editor-preview-frame {
+  width: 270px;
+  height: 480px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid var(--border);
+  cursor: grab;
+}
+
+.editor-preview-frame:active {
+  cursor: grabbing;
+}
+
+.editor-preview-frame canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.editor-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 250px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.control-group select,
+.control-group input[type="range"] {
+  width: 100%;
+}
+
+.control-group select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--surface);
+}
+
+.zoom-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.zoom-value {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Progress bar */
+.progress-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-overlay.active { display: flex; }
+
+.progress-box {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 32px;
+  min-width: 360px;
+  text-align: center;
+}
+
+.progress-box h3 {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.2s;
+  width: 0%;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Warning */
+.warning-banner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #92400e;
+  display: none;
+}
+
+.warning-banner.active { display: block; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state p { font-size: 15px; }
+
+/* Range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #aaa; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Bulk Instagram Story Generator</h1>
+  <div class="header-actions" id="headerActions" style="display:none;">
+    <button class="btn btn-sm" id="addMoreBtn">+ Add more</button>
+    <button class="btn btn-sm btn-danger" id="clearAllBtn">Clear all</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Upload zone -->
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-zone-icon">&#128247;</div>
+    <h2>Drop images here</h2>
+    <p>or click to browse — JPG, PNG, WebP, AVIF, HEIC &bull; Up to 50 images</p>
+    <button class="btn btn-primary">Choose Files</button>
+    <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.avif,.heic,.heif">
+  </div>
+
+  <!-- Warning banner -->
+  <div class="warning-banner" id="warningBanner"></div>
+
+  <!-- Settings bar -->
+  <div class="settings-bar" id="settingsBar" style="display:none;">
+    <div class="setting-group">
+      <label>Fit Mode</label>
+      <select id="globalFitMode">
+        <option value="fill">Fill &amp; crop</option>
+        <option value="fit">Fit (preserve aspect ratio)</option>
+        <option value="pad">Pad with background (no cropping)</option>
+        <option value="stretch">Stretch (may distort)</option>
+      </select>
+    </div>
+    <div class="setting-group" id="bgSettingGroup">
+      <label>Background</label>
+      <select id="globalBgStyle">
+        <option value="blur">Blurred version of image</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar" id="toolbar" style="display:none;">
+    <div class="toolbar-left">
+      <span class="toolbar-info" id="imageCount"></span>
+      <button class="btn btn-sm" id="selectAllBtn">Select all</button>
+      <button class="btn btn-sm" id="deselectAllBtn">Deselect all</button>
+    </div>
+    <div class="toolbar-left">
+      <button class="btn btn-sm" id="downloadIndividualBtn">Download individually</button>
+      <button class="btn btn-primary" id="exportBtn">Export ZIP</button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid" id="grid"></div>
+
+  <!-- Empty state -->
+  <div class="empty-state" id="emptyState" style="display:none;">
+    <p>No images uploaded yet. Drop some images above to get started.</p>
+  </div>
+</div>
+
+<!-- Editor Modal -->
+<div class="modal-overlay" id="editorOverlay">
+  <div class="editor-modal">
+    <div class="editor-header">
+      <h3 id="editorTitle">image.jpg</h3>
+      <div class="editor-nav">
+        <button class="btn btn-sm" id="editorPrev">&larr; Prev</button>
+        <span class="editor-nav-counter" id="editorCounter">1 / 10</span>
+        <button class="btn btn-sm" id="editorNext">Next &rarr;</button>
+      </div>
+    </div>
+    <div class="editor-body">
+      <div class="editor-preview-container">
+        <div class="editor-preview-frame" id="editorPreviewFrame">
+          <canvas id="editorCanvas" width="1080" height="1920"></canvas>
+        </div>
+        <span style="font-size:12px;color:var(--text-secondary);">Click and drag to reposition</span>
+      </div>
+      <div class="editor-controls">
+        <div class="control-group">
+          <div class="zoom-display">
+            <label>Zoom</label>
+            <span class="zoom-value" id="zoomValue">100%</span>
+          </div>
+          <input type="range" id="zoomSlider" min="0" max="100" value="50">
+        </div>
+        <div class="control-group">
+          <label>Fit Mode (override)</label>
+          <select id="editorFitMode">
+            <option value="">Use global setting</option>
+            <option value="fill">Fill &amp; crop</option>
+            <option value="fit">Fit (preserve aspect ratio)</option>
+            <option value="pad">Pad with background (no cropping)</option>
+            <option value="stretch">Stretch (may distort)</option>
+          </select>
+        </div>
+        <div class="control-group" id="editorBgGroup">
+          <label>Background (override)</label>
+          <select id="editorBgStyle">
+            <option value="">Use global setting</option>
+            <option value="blur">Blurred version of image</option>
+          </select>
+        </div>
+        <div style="margin-top:auto; display:flex; gap:8px;">
+          <button class="btn btn-sm" id="editorReset">Reset to defaults</button>
+        </div>
+      </div>
+    </div>
+    <div class="editor-footer">
+      <div></div>
+      <button class="btn btn-primary" id="editorDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress overlay -->
+<div class="progress-overlay" id="progressOverlay">
+  <div class="progress-box">
+    <h3 id="progressTitle">Exporting...</h3>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <p class="progress-text" id="progressText">0 / 0</p>
+    <button class="btn btn-sm" id="cancelExportBtn" style="margin-top:12px;">Cancel</button>
+  </div>
+</div>
+
+<!-- JSZip from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+const STORY_W = 1080;
+const STORY_H = 1920;
+const MAX_IMAGES = 50;
+const MAX_ZOOM_FACTOR = 3;
+
+const state = {
+  images: [],          // Array of ImageEntry
+  globalFitMode: 'fill',
+  globalBgStyle: 'blur',
+  editorIndex: -1,
+};
+
+// ImageEntry: { id, file, filename, img, included, customized, fitMode, bgStyle, zoom, offsetX, offsetY }
+
+let nextId = 0;
+
+// ============================================================
+// DOM refs
+// ============================================================
+const $ = (sel) => document.querySelector(sel);
+const uploadZone = $('#uploadZone');
+const fileInput = $('#fileInput');
+const warningBanner = $('#warningBanner');
+const settingsBar = $('#settingsBar');
+const toolbar = $('#toolbar');
+const grid = $('#grid');
+const emptyState = $('#emptyState');
+const headerActions = $('#headerActions');
+const imageCountEl = $('#imageCount');
+const editorOverlay = $('#editorOverlay');
+const editorCanvas = $('#editorCanvas');
+const editorPreviewFrame = $('#editorPreviewFrame');
+const progressOverlay = $('#progressOverlay');
+const progressFill = $('#progressFill');
+const progressText = $('#progressText');
+const progressTitle = $('#progressTitle');
+
+// ============================================================
+// Upload handling
+// ============================================================
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
+const ACCEPTED_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.heic', '.heif'];
+
+function isAcceptedFile(file) {
+  if (ACCEPTED_TYPES.includes(file.type)) return true;
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  return ACCEPTED_EXT.includes(ext);
+}
+
+uploadZone.addEventListener('click', () => fileInput.click());
+$('#addMoreBtn').addEventListener('click', () => fileInput.click());
+
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+fileInput.addEventListener('change', () => {
+  handleFiles(fileInput.files);
+  fileInput.value = '';
+});
+
+// Allow dropping anywhere in the container even after initial upload
+const container = $('.container');
+container.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  if (state.images.length > 0) {
+    container.style.outline = '2px dashed var(--accent)';
+    container.style.outlineOffset = '-4px';
+  }
+});
+container.addEventListener('dragleave', (e) => {
+  if (!container.contains(e.relatedTarget)) {
+    container.style.outline = '';
+    container.style.outlineOffset = '';
+  }
+});
+container.addEventListener('drop', (e) => {
+  e.preventDefault();
+  container.style.outline = '';
+  container.style.outlineOffset = '';
+  if (state.images.length > 0) {
+    handleFiles(e.dataTransfer.files);
+  }
+});
+
+function handleFiles(fileList) {
+  const files = Array.from(fileList).filter(isAcceptedFile);
+  if (files.length === 0) {
+    showWarning('No supported image files found. Accepted formats: JPG, PNG, WebP, AVIF, HEIC.');
+    return;
+  }
+
+  const available = MAX_IMAGES - state.images.length;
+  if (available <= 0) {
+    showWarning(`Maximum of ${MAX_IMAGES} images reached. Remove some images to add more.`);
+    return;
+  }
+
+  let toAdd = files;
+  if (files.length > available) {
+    toAdd = files.slice(0, available);
+    showWarning(`Only ${available} more image(s) can be added (max ${MAX_IMAGES}). ${files.length - available} file(s) were skipped.`);
+  } else {
+    hideWarning();
+  }
+
+  toAdd.forEach((file) => {
+    const entry = {
+      id: nextId++,
+      file,
+      filename: file.name,
+      img: null,
+      included: true,
+      customized: false,
+      fitMode: null,
+      bgStyle: null,
+      zoom: null,
+      offsetX: 0,
+      offsetY: 0,
+    };
+    state.images.push(entry);
+    loadImage(entry);
+  });
+
+  updateUI();
+}
+
+function loadImage(entry) {
+  const img = new Image();
+  const url = URL.createObjectURL(entry.file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    entry.img = img;
+    renderThumbnail(entry);
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    // Remove failed entry
+    state.images = state.images.filter(e => e.id !== entry.id);
+    updateUI();
+  };
+  img.src = url;
+}
+
+function showWarning(msg) {
+  warningBanner.textContent = msg;
+  warningBanner.classList.add('active');
+}
+
+function hideWarning() {
+  warningBanner.classList.remove('active');
+}
+
+// ============================================================
+// UI update
+// ============================================================
+function updateUI() {
+  const hasImages = state.images.length > 0;
+  uploadZone.style.display = hasImages ? 'none' : '';
+  settingsBar.style.display = hasImages ? 'flex' : 'none';
+  toolbar.style.display = hasImages ? 'flex' : 'none';
+  headerActions.style.display = hasImages ? 'flex' : 'none';
+  emptyState.style.display = 'none';
+
+  const checked = state.images.filter(e => e.included).length;
+  imageCountEl.textContent = `${state.images.length} image${state.images.length !== 1 ? 's' : ''} — ${checked} selected for export`;
+
+  $('#exportBtn').disabled = checked === 0;
+  $('#downloadIndividualBtn').disabled = checked === 0;
+
+  updateBgVisibility();
+}
+
+function updateBgVisibility() {
+  const mode = state.globalFitMode;
+  const showBg = mode === 'fit' || mode === 'pad';
+  $('#bgSettingGroup').style.display = showBg ? '' : 'none';
+}
+
+// ============================================================
+// Rendering engine
+// ============================================================
+function getEffectiveFitMode(entry) {
+  return entry.fitMode || state.globalFitMode;
+}
+
+function getEffectiveBgStyle(entry) {
+  return entry.bgStyle || state.globalBgStyle;
+}
+
+function computeZoomBounds(entry) {
+  if (!entry.img) return { minZoom: 1, maxZoom: 3, fillZoom: 1 };
+  const imgW = entry.img.naturalWidth;
+  const imgH = entry.img.naturalHeight;
+  const mode = getEffectiveFitMode(entry);
+
+  // Fit zoom: entire image visible
+  const fitZoom = Math.min(STORY_W / imgW, STORY_H / imgH);
+  // Fill zoom: image covers entire frame
+  const fillZoom = Math.max(STORY_W / imgW, STORY_H / imgH);
+
+  // For pad mode with small images, allow zoom down to 1:1 (no upscaling)
+  const minZoom = (mode === 'pad') ? Math.min(1, fitZoom) : fitZoom;
+
+  // Max zoom
+  const maxZoom = fitZoom * MAX_ZOOM_FACTOR;
+
+  return { minZoom, maxZoom, fillZoom };
+}
+
+function getEffectiveZoom(entry) {
+  if (entry.zoom !== null) return entry.zoom;
+
+  const mode = getEffectiveFitMode(entry);
+  const { minZoom, fillZoom } = computeZoomBounds(entry);
+
+  switch (mode) {
+    case 'fill': return fillZoom;
+    case 'fit': return minZoom;
+    case 'pad': return Math.min(1, minZoom); // original size, or scale down if too large
+    case 'stretch': return 1; // doesn't matter
+    default: return fillZoom;
+  }
+}
+
+function renderToCanvas(canvas, entry, previewScale) {
+  if (!entry.img) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const img = entry.img;
+  const imgW = img.naturalWidth;
+  const imgH = img.naturalHeight;
+  const mode = getEffectiveFitMode(entry);
+  const bgStyle = getEffectiveBgStyle(entry);
+
+  ctx.clearRect(0, 0, w, h);
+
+  if (mode === 'stretch') {
+    ctx.drawImage(img, 0, 0, w, h);
+    return;
+  }
+
+  const zoom = getEffectiveZoom(entry);
+  const scale = previewScale || 1;
+
+  // All drawing coordinates are scaled to canvas size
+  const drawW = imgW * zoom * scale;
+  const drawH = imgH * zoom * scale;
+  const cx = (w - drawW) / 2 + entry.offsetX * scale;
+  const cy = (h - drawH) / 2 + entry.offsetY * scale;
+
+  // Check if image fully covers the canvas
+  const coversCanvas = cx <= 0.5 && cy <= 0.5 && (cx + drawW) >= (w - 0.5) && (cy + drawH) >= (h - 0.5);
+
+  // Draw blurred background when needed (fit/pad modes, or fill mode with gaps)
+  if (mode === 'fit' || mode === 'pad' || (mode === 'fill' && !coversCanvas)) {
+    if (bgStyle === 'blur') {
+      ctx.save();
+      const blurAmount = Math.round(40 * scale);
+      ctx.filter = `blur(${Math.max(blurAmount, 5)}px)`;
+      const bgScale = Math.max(w / imgW, h / imgH) * 1.1;
+      const bgW = imgW * bgScale;
+      const bgH = imgH * bgScale;
+      ctx.drawImage(img, (w - bgW) / 2, (h - bgH) / 2, bgW, bgH);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  // Draw main image
+  ctx.drawImage(img, cx, cy, drawW, drawH);
+}
+
+// Clamp offsets so at least 20% of the image stays visible
+function clampOffsets(entry) {
+  if (!entry.img) return;
+  const zoom = getEffectiveZoom(entry);
+  const drawW = entry.img.naturalWidth * zoom;
+  const drawH = entry.img.naturalHeight * zoom;
+  const margin = 0.2; // 20% must remain visible
+  const maxOffsetX = (STORY_W + drawW) / 2 - drawW * margin;
+  const maxOffsetY = (STORY_H + drawH) / 2 - drawH * margin;
+  entry.offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, entry.offsetX));
+  entry.offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, entry.offsetY));
+}
+
+// Render at actual story resolution for export
+function renderFullRes(entry) {
+  const canvas = document.createElement('canvas');
+  canvas.width = STORY_W;
+  canvas.height = STORY_H;
+  renderToCanvas(canvas, entry, 1);
+  return canvas;
+}
+
+// ============================================================
+// Grid / Thumbnails
+// ============================================================
+function renderThumbnail(entry) {
+  let el = document.querySelector(`.grid-item[data-id="${entry.id}"]`);
+  if (!el) {
+    el = createGridItem(entry);
+    grid.appendChild(el);
+  }
+
+  const canvas = el.querySelector('canvas');
+  // Use a small canvas for performance
+  const thumbScale = 270 / STORY_W; // ~0.25
+  canvas.width = 270;
+  canvas.height = 480;
+
+  const scaleFactor = canvas.width / STORY_W;
+  renderToCanvas(canvas, entry, scaleFactor);
+
+  el.classList.toggle('excluded', !entry.included);
+  const customBadge = el.querySelector('.grid-item-customized');
+  if (customBadge) customBadge.style.display = entry.customized ? '' : 'none';
+}
+
+function createGridItem(entry) {
+  const el = document.createElement('div');
+  el.className = 'grid-item';
+  el.dataset.id = entry.id;
+
+  el.innerHTML = `
+    <div class="grid-item-preview">
+      <input type="checkbox" class="grid-item-checkbox" ${entry.included ? 'checked' : ''}>
+      <canvas></canvas>
+    </div>
+    <div class="grid-item-info">
+      <span class="grid-item-filename" title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</span>
+      <span class="grid-item-customized" style="display:none;">Customized</span>
+    </div>
+  `;
+
+  const checkbox = el.querySelector('.grid-item-checkbox');
+  checkbox.addEventListener('click', (e) => {
+    e.stopPropagation();
+    entry.included = checkbox.checked;
+    el.classList.toggle('excluded', !entry.included);
+    updateUI();
+  });
+
+  el.addEventListener('click', (e) => {
+    if (e.target === checkbox) return;
+    openEditor(state.images.indexOf(entry));
+  });
+
+  return el;
+}
+
+function rerenderAllThumbnails() {
+  state.images.forEach(renderThumbnail);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================================================
+// Global settings
+// ============================================================
+$('#globalFitMode').addEventListener('change', (e) => {
+  state.globalFitMode = e.target.value;
+  updateBgVisibility();
+  // Re-apply to non-customized images
+  state.images.forEach(entry => {
+    if (!entry.customized) {
+      entry.offsetX = 0;
+      entry.offsetY = 0;
+      entry.zoom = null;
+    }
+  });
+  rerenderAllThumbnails();
+});
+
+$('#globalBgStyle').addEventListener('change', (e) => {
+  state.globalBgStyle = e.target.value;
+  state.images.forEach(entry => {
+    if (!entry.customized) {
+      // Re-render
+    }
+  });
+  rerenderAllThumbnails();
+});
+
+$('#selectAllBtn').addEventListener('click', () => {
+  state.images.forEach(e => e.included = true);
+  document.querySelectorAll('.grid-item-checkbox').forEach(cb => cb.checked = true);
+  document.querySelectorAll('.grid-item').forEach(el => el.classList.remove('excluded'));
+  updateUI();
+});
+
+$('#deselectAllBtn').addEventListener('click', () => {
+  state.images.forEach(e => e.included = false);
+  document.querySelectorAll('.grid-item-checkbox').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.grid-item').forEach(el => el.classList.add('excluded'));
+  updateUI();
+});
+
+$('#clearAllBtn').addEventListener('click', () => {
+  if (!confirm('Remove all images?')) return;
+  state.images = [];
+  grid.innerHTML = '';
+  updateUI();
+  uploadZone.style.display = '';
+  settingsBar.style.display = 'none';
+  toolbar.style.display = 'none';
+  headerActions.style.display = 'none';
+});
+
+// ============================================================
+// Editor
+// ============================================================
+let editorDragState = null;
+
+function openEditor(index) {
+  if (index < 0 || index >= state.images.length) return;
+  state.editorIndex = index;
+  editorOverlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  updateEditor();
+}
+
+function closeEditor() {
+  editorOverlay.classList.remove('active');
+  document.body.style.overflow = '';
+  state.editorIndex = -1;
+}
+
+function updateEditor() {
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  $('#editorTitle').textContent = entry.filename;
+  $('#editorCounter').textContent = `${state.editorIndex + 1} / ${state.images.length}`;
+  $('#editorPrev').disabled = state.editorIndex === 0;
+  $('#editorNext').disabled = state.editorIndex === state.images.length - 1;
+
+  // Set controls
+  $('#editorFitMode').value = entry.fitMode || '';
+  $('#editorBgStyle').value = entry.bgStyle || '';
+
+  // Update bg visibility in editor
+  const mode = getEffectiveFitMode(entry);
+  $('#editorBgGroup').style.display = (mode === 'fit' || mode === 'pad') ? '' : 'none';
+
+  // Zoom slider
+  updateZoomSlider(entry);
+
+  renderEditorPreview();
+}
+
+function updateZoomSlider(entry) {
+  const { minZoom, maxZoom, fillZoom } = computeZoomBounds(entry);
+  const currentZoom = getEffectiveZoom(entry);
+
+  // Map zoom to 0-100 slider
+  const slider = $('#zoomSlider');
+  const pct = ((currentZoom - minZoom) / (maxZoom - minZoom)) * 100;
+  slider.value = Math.max(0, Math.min(100, pct));
+
+  // Display zoom relative to fill level (100% = covers the frame)
+  const displayPct = Math.round((currentZoom / fillZoom) * 100);
+  $('#zoomValue').textContent = `${displayPct}%`;
+}
+
+function renderEditorPreview() {
+  const entry = state.images[state.editorIndex];
+  if (!entry || !entry.img) return;
+
+  const canvas = editorCanvas;
+  // Use half resolution for smooth interactive preview
+  const previewW = 540;
+  const previewH = 960;
+  canvas.width = previewW;
+  canvas.height = previewH;
+
+  const scaleFactor = previewW / STORY_W;
+  renderToCanvas(canvas, entry, scaleFactor);
+}
+
+// Editor controls
+$('#zoomSlider').addEventListener('input', (e) => {
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  const { minZoom, maxZoom } = computeZoomBounds(entry);
+  const pct = parseFloat(e.target.value) / 100;
+  const newZoom = minZoom + pct * (maxZoom - minZoom);
+
+  entry.zoom = newZoom;
+  clampOffsets(entry);
+  entry.customized = true;
+
+  const { fillZoom } = computeZoomBounds(entry);
+  const displayPct = Math.round((newZoom / fillZoom) * 100);
+  $('#zoomValue').textContent = `${displayPct}%`;
+
+  renderEditorPreview();
+  renderThumbnail(entry);
+});
+
+$('#editorFitMode').addEventListener('change', (e) => {
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  entry.fitMode = e.target.value || null;
+  if (e.target.value) {
+    entry.customized = true;
+  } else if (!entry.bgStyle && entry.zoom === null && entry.offsetX === 0 && entry.offsetY === 0) {
+    entry.customized = false;
+  }
+
+  // Reset offset/zoom when changing mode
+  entry.offsetX = 0;
+  entry.offsetY = 0;
+  entry.zoom = null;
+
+  // Update bg visibility
+  const mode = getEffectiveFitMode(entry);
+  $('#editorBgGroup').style.display = (mode === 'fit' || mode === 'pad') ? '' : 'none';
+
+  updateZoomSlider(entry);
+  renderEditorPreview();
+  renderThumbnail(entry);
+});
+
+$('#editorBgStyle').addEventListener('change', (e) => {
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  entry.bgStyle = e.target.value || null;
+  if (e.target.value) {
+    entry.customized = true;
+  }
+  renderEditorPreview();
+  renderThumbnail(entry);
+});
+
+$('#editorReset').addEventListener('click', () => {
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  entry.fitMode = null;
+  entry.bgStyle = null;
+  entry.zoom = null;
+  entry.offsetX = 0;
+  entry.offsetY = 0;
+  entry.customized = false;
+
+  updateEditor();
+  renderThumbnail(entry);
+});
+
+$('#editorDone').addEventListener('click', closeEditor);
+$('#editorPrev').addEventListener('click', () => navigateEditor(-1));
+$('#editorNext').addEventListener('click', () => navigateEditor(1));
+
+function navigateEditor(dir) {
+  const newIndex = state.editorIndex + dir;
+  if (newIndex >= 0 && newIndex < state.images.length) {
+    state.editorIndex = newIndex;
+    updateEditor();
+  }
+}
+
+// Drag to reposition
+editorPreviewFrame.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const entry = state.images[state.editorIndex];
+  if (!entry || getEffectiveFitMode(entry) === 'stretch') return;
+
+  editorDragState = {
+    startX: e.clientX,
+    startY: e.clientY,
+    origOffsetX: entry.offsetX,
+    origOffsetY: entry.offsetY,
+  };
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!editorDragState) return;
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  const frameRect = editorPreviewFrame.getBoundingClientRect();
+  const scaleX = STORY_W / frameRect.width;
+  const scaleY = STORY_H / frameRect.height;
+
+  const dx = (e.clientX - editorDragState.startX) * scaleX;
+  const dy = (e.clientY - editorDragState.startY) * scaleY;
+
+  entry.offsetX = editorDragState.origOffsetX + dx;
+  entry.offsetY = editorDragState.origOffsetY + dy;
+  clampOffsets(entry);
+  entry.customized = true;
+
+  renderEditorPreview();
+});
+
+document.addEventListener('mouseup', () => {
+  if (editorDragState) {
+    editorDragState = null;
+    const entry = state.images[state.editorIndex];
+    if (entry) renderThumbnail(entry);
+  }
+});
+
+// Touch support for drag
+editorPreviewFrame.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const entry = state.images[state.editorIndex];
+  if (!entry || getEffectiveFitMode(entry) === 'stretch') return;
+  const touch = e.touches[0];
+  editorDragState = {
+    startX: touch.clientX,
+    startY: touch.clientY,
+    origOffsetX: entry.offsetX,
+    origOffsetY: entry.offsetY,
+  };
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+  if (!editorDragState) return;
+  const entry = state.images[state.editorIndex];
+  if (!entry) return;
+
+  const touch = e.touches[0];
+  const frameRect = editorPreviewFrame.getBoundingClientRect();
+  const scaleX = STORY_W / frameRect.width;
+  const scaleY = STORY_H / frameRect.height;
+
+  const dx = (touch.clientX - editorDragState.startX) * scaleX;
+  const dy = (touch.clientY - editorDragState.startY) * scaleY;
+
+  entry.offsetX = editorDragState.origOffsetX + dx;
+  entry.offsetY = editorDragState.origOffsetY + dy;
+  clampOffsets(entry);
+  entry.customized = true;
+
+  renderEditorPreview();
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+  if (editorDragState) {
+    editorDragState = null;
+    const entry = state.images[state.editorIndex];
+    if (entry) renderThumbnail(entry);
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (!editorOverlay.classList.contains('active')) return;
+
+  switch (e.key) {
+    case 'Escape':
+      closeEditor();
+      break;
+    case 'ArrowLeft':
+      navigateEditor(-1);
+      break;
+    case 'ArrowRight':
+      navigateEditor(1);
+      break;
+    case ' ':
+      e.preventDefault();
+      const entry = state.images[state.editorIndex];
+      if (entry) {
+        entry.included = !entry.included;
+        const el = document.querySelector(`.grid-item[data-id="${entry.id}"]`);
+        if (el) {
+          el.querySelector('.grid-item-checkbox').checked = entry.included;
+          el.classList.toggle('excluded', !entry.included);
+        }
+        updateUI();
+      }
+      break;
+  }
+});
+
+// Close on overlay click
+editorOverlay.addEventListener('click', (e) => {
+  if (e.target === editorOverlay) closeEditor();
+});
+
+// ============================================================
+// Export
+// ============================================================
+let exportCancelled = false;
+
+async function exportZip() {
+  const toExport = state.images.filter(e => e.included && e.img);
+  if (toExport.length === 0) return;
+
+  exportCancelled = false;
+  progressOverlay.classList.add('active');
+  progressTitle.textContent = 'Exporting ZIP...';
+  progressFill.style.width = '0%';
+  progressText.textContent = `0 / ${toExport.length}`;
+
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    const zip = new JSZip();
+
+    for (let i = 0; i < toExport.length; i++) {
+      if (exportCancelled) break;
+      const entry = toExport[i];
+      const canvas = renderFullRes(entry);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 1.0));
+      const baseName = entry.filename.replace(/\.[^.]+$/, '');
+      zip.file(`${baseName}_story.jpg`, blob);
+
+      const pct = ((i + 1) / toExport.length * 100);
+      progressFill.style.width = `${pct}%`;
+      progressText.textContent = `${i + 1} / ${toExport.length}`;
+
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    if (!exportCancelled) {
+      progressText.textContent = 'Creating ZIP...';
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'instagram_stories.zip';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  } catch (err) {
+    console.error('Export failed:', err);
+    alert('Export failed. Please try again.');
+  }
+
+  progressOverlay.classList.remove('active');
+}
+
+async function downloadIndividually() {
+  const toExport = state.images.filter(e => e.included && e.img);
+  if (toExport.length === 0) return;
+
+  exportCancelled = false;
+  progressOverlay.classList.add('active');
+  progressTitle.textContent = 'Preparing downloads...';
+  progressFill.style.width = '0%';
+  progressText.textContent = `0 / ${toExport.length}`;
+
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    for (let i = 0; i < toExport.length; i++) {
+      if (exportCancelled) break;
+      const entry = toExport[i];
+      const canvas = renderFullRes(entry);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 1.0));
+      const baseName = entry.filename.replace(/\.[^.]+$/, '');
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseName}_story.jpg`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+      const pct = ((i + 1) / toExport.length * 100);
+      progressFill.style.width = `${pct}%`;
+      progressText.textContent = `${i + 1} / ${toExport.length}`;
+
+      await new Promise(r => setTimeout(r, 200));
+    }
+  } catch (err) {
+    console.error('Download failed:', err);
+    alert('Download failed. Please try again.');
+  }
+
+  progressOverlay.classList.remove('active');
+}
+
+$('#exportBtn').addEventListener('click', exportZip);
+$('#downloadIndividualBtn').addEventListener('click', downloadIndividually);
+$('#cancelExportBtn').addEventListener('click', () => { exportCancelled = true; });
+
+// ============================================================
+// Init
+// ============================================================
+updateUI();
+</script>
+</body>
+</html>
