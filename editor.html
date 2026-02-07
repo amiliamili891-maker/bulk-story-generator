@@ -6,8 +6,65 @@
 <title>Instagram Story Editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Dancing+Script:wght@400;700&family=Courier+Prime:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Varela+Round&family=Archivo+Narrow:wght@400;700&family=Poiret+One&family=Comic+Neue:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Varela+Round&family=Archivo+Narrow:wght@400;700&family=Poiret+One&family=Comic+Neue:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+/* Actual Instagram fonts loaded from local WOFF2 files */
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/SF-Pro-Display-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/SF-Pro-Display-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/SF-Pro-Display-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/SF-Pro-Display-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/SF-Pro-Display-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Aveny-T';
+  src: url('fonts/AvenyTWEB.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cosmopolitan Script';
+  src: url('fonts/CosmopolitanScriptRegular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Proxima Nova';
+  src: url('fonts/Proxima-Nova-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -230,11 +287,11 @@ body {
   display: block;
 }
 
-.style-btn.s-classic { font-family: 'Inter', sans-serif; font-weight: 400; }
-.style-btn.s-modern { font-family: 'DM Sans', sans-serif; font-weight: 300; }
-.style-btn.s-neon { font-family: 'Dancing Script', cursive; text-shadow: 0 0 8px currentColor; }
+.style-btn.s-classic { font-family: 'SF Pro Display', -apple-system, sans-serif; font-weight: 400; }
+.style-btn.s-modern { font-family: 'Aveny-T', 'SF Pro Display', sans-serif; font-weight: 400; }
+.style-btn.s-neon { font-family: 'Cosmopolitan Script', cursive; text-shadow: 0 0 8px currentColor; }
 .style-btn.s-typewriter { font-family: 'Courier Prime', monospace; font-weight: 700; }
-.style-btn.s-strong { font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; }
+.style-btn.s-strong { font-family: 'SF Pro Display', -apple-system, sans-serif; font-weight: 700; text-transform: uppercase; }
 .style-btn.s-poster { font-family: 'Playfair Display', serif; font-weight: 900; }
 .style-btn.s-bubble { font-family: 'Varela Round', sans-serif; }
 .style-btn.s-squeeze { font-family: 'Archivo Narrow', sans-serif; font-weight: 700; letter-spacing: -0.5px; }
@@ -701,7 +758,7 @@ const SCALE = FRAME_W / STORY_W; // 0.333...
 const TEXT_STYLES = {
   classic: {
     label: 'Classic',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'SF Pro Display', -apple-system, sans-serif",
     fontWeight: '400',
     textTransform: 'none',
     defaultSize: 32,
@@ -709,16 +766,16 @@ const TEXT_STYLES = {
   },
   modern: {
     label: 'Modern',
-    fontFamily: "'DM Sans', sans-serif",
-    fontWeight: '300',
+    fontFamily: "'Aveny-T', 'SF Pro Display', sans-serif",
+    fontWeight: '400',
     textTransform: 'none',
     defaultSize: 28,
     glow: false,
   },
   neon: {
     label: 'Neon',
-    fontFamily: "'Dancing Script', cursive",
-    fontWeight: '700',
+    fontFamily: "'Cosmopolitan Script', cursive",
+    fontWeight: '400',
     textTransform: 'none',
     defaultSize: 40,
     glow: true,
@@ -733,8 +790,8 @@ const TEXT_STYLES = {
   },
   strong: {
     label: 'Strong',
-    fontFamily: "'Inter', sans-serif",
-    fontWeight: '900',
+    fontFamily: "'SF Pro Display', -apple-system, sans-serif",
+    fontWeight: '700',
     textTransform: 'uppercase',
     defaultSize: 48,
     glow: false,
