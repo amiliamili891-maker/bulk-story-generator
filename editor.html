@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Instagram Story Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Quicksand:wght@300;400&family=Russo+One&family=Courier+Prime&family=Anton&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #111;
+  --surface: #1a1a1a;
+  --surface2: #252525;
+  --border: #333;
+  --text: #fff;
+  --text-dim: #999;
+  --accent: #4f46e5;
+  --accent-hover: #6366f1;
+  --radius: 8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.4;
+  overflow: hidden;
+  height: 100vh;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Layout */
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Left sidebar - tools */
+.sidebar {
+  width: 280px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-section h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+/* Canvas area */
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.story-frame {
+  position: relative;
+  width: 360px;
+  height: 640px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  cursor: default;
+}
+
+.story-frame canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Text layers rendered as DOM overlays for editing */
+.text-layer {
+  position: absolute;
+  cursor: grab;
+  white-space: pre-wrap;
+  word-break: break-word;
+  outline: none;
+  min-width: 40px;
+  min-height: 24px;
+  max-width: 340px;
+  padding: 4px 8px;
+  transform-origin: center center;
+  line-height: 1.3;
+}
+
+.text-layer:active { cursor: grabbing; }
+
+.text-layer.selected {
+  outline: 2px solid rgba(255,255,255,0.6);
+  outline-offset: 4px;
+}
+
+.text-layer.editing {
+  cursor: text;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* Rotation handle */
+.rotate-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  border-radius: 50%;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: grab;
+  display: none;
+  z-index: 10;
+  border: 2px solid white;
+}
+
+.text-layer.selected .rotate-handle { display: block; }
+
+/* Delete handle */
+.delete-handle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: #ef4444;
+  border-radius: 50%;
+  top: -10px;
+  right: -10px;
+  cursor: pointer;
+  display: none;
+  z-index: 10;
+  border: 2px solid white;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  color: white;
+}
+
+.text-layer.selected .delete-handle { display: block; }
+
+/* Right panel */
+.right-panel {
+  width: 300px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover { background: #333; }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-full { width: 100%; }
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* Style buttons */
+.style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.style-btn {
+  padding: 10px 8px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+  font-size: 14px;
+}
+
+.style-btn:hover { border-color: #555; }
+.style-btn.active { border-color: var(--accent); background: rgba(79,70,229,0.15); }
+
+.style-btn .style-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  display: block;
+}
+
+.style-btn.s-classic { font-family: 'Roboto', sans-serif; }
+.style-btn.s-modern { font-family: 'Quicksand', sans-serif; font-weight: 300; }
+.style-btn.s-neon { font-family: 'Russo One', sans-serif; text-shadow: 0 0 8px currentColor; }
+.style-btn.s-typewriter { font-family: 'Courier Prime', monospace; }
+.style-btn.s-strong { font-family: 'Anton', sans-serif; text-transform: uppercase; }
+
+/* Color picker row */
+.color-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.active { border-color: white; box-shadow: 0 0 0 2px var(--accent); }
+
+.color-swatch-custom {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px dashed #555;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.color-swatch-custom input {
+  position: absolute;
+  inset: -10px;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+/* Slider controls */
+.control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-row label {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+}
+
+.control-row label span {
+  color: var(--text);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* Alignment */
+.align-row {
+  display: flex;
+  gap: 4px;
+}
+
+.align-btn {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+}
+
+.align-btn:hover { background: #333; }
+.align-btn.active { background: var(--accent); border-color: var(--accent); }
+
+/* Background highlight options */
+.bg-options {
+  display: flex;
+  gap: 4px;
+}
+
+.bg-option {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+  text-align: center;
+}
+
+.bg-option:hover { background: #333; }
+.bg-option.active { background: var(--accent); border-color: var(--accent); }
+
+/* Upload area */
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-zone-sm {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.upload-zone-sm:hover { border-color: var(--accent); color: var(--text); }
+
+/* Emoji picker */
+.emoji-picker {
+  display: none;
+  position: absolute;
+  bottom: 60px;
+  left: 16px;
+  width: 320px;
+  max-height: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  z-index: 500;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.emoji-picker.active { display: flex; }
+
+.emoji-search {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.emoji-search input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.emoji-search input:focus { border-color: var(--accent); }
+
+.emoji-categories {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.emoji-cat-btn {
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.emoji-cat-btn:hover { opacity: 0.8; background: var(--surface2); }
+.emoji-cat-btn.active { opacity: 1; background: var(--accent); }
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: 8px;
+  overflow-y: auto;
+  max-height: 240px;
+}
+
+.emoji-item {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.emoji-item:hover { background: var(--surface2); }
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 50;
+}
+
+.top-bar h1 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.top-bar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Layer list */
+.layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+}
+
+.layer-item:hover { background: var(--surface2); }
+.layer-item.active { background: rgba(79,70,229,0.2); border: 1px solid var(--accent); }
+
+.layer-item .layer-preview {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.layer-item .layer-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-item .layer-delete {
+  opacity: 0;
+  cursor: pointer;
+  color: #ef4444;
+  font-size: 16px;
+  padding: 2px;
+}
+
+.layer-item:hover .layer-delete { opacity: 1; }
+
+/* No selection state */
+.no-selection {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* Mobile responsive */
+@media (max-width: 900px) {
+  .sidebar { width: 60px; overflow: hidden; }
+  .right-panel { width: 240px; }
+}
+
+@media (max-width: 600px) {
+  .app { flex-direction: column; }
+  .sidebar, .right-panel { width: 100%; height: auto; max-height: 200px; }
+  .story-frame { width: 270px; height: 480px; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+/* Hidden file input */
+input[type="file"].hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>Instagram Story Editor</h1>
+  <div class="top-bar-actions">
+    <a href="index.html" class="btn btn-sm">Bulk Generator</a>
+    <button class="btn btn-sm" id="newStoryBtn">New Story</button>
+    <button class="btn btn-primary btn-sm" id="exportBtn">Export JPEG</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Left sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section upload-area">
+      <h3>Background Image</h3>
+      <div class="upload-zone-sm" id="uploadZone">Drop image or click to browse</div>
+      <input type="file" id="bgFileInput" class="hidden" accept="image/*">
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-sm btn-full" id="bgColorBtn" style="flex:1;">Solid Color</button>
+        <input type="color" id="bgColorPicker" value="#000000" style="opacity:0;width:0;height:0;position:absolute;">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Add Elements</h3>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-full" id="addTextBtn">+ Add Text</button>
+        <button class="btn btn-full" id="toggleEmojiBtn">+ Add Emoji</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Layers</h3>
+      <div class="layer-list" id="layerList">
+        <div class="no-selection">No layers yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas area -->
+  <div class="canvas-area" id="canvasArea">
+    <div class="story-frame" id="storyFrame">
+      <canvas id="bgCanvas" width="1080" height="1920"></canvas>
+      <!-- Text/emoji layers rendered here as DOM elements -->
+    </div>
+
+    <!-- Emoji picker -->
+    <div class="emoji-picker" id="emojiPicker">
+      <div class="emoji-search">
+        <input type="text" placeholder="Search emojis..." id="emojiSearch">
+      </div>
+      <div class="emoji-categories" id="emojiCategories"></div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+  </div>
+
+  <!-- Right panel - text properties -->
+  <div class="right-panel" id="rightPanel">
+    <div class="sidebar-section">
+      <h3>Text Style</h3>
+      <div class="style-grid" id="styleGrid">
+        <div class="style-btn s-classic active" data-style="classic">Aa<span class="style-label">Classic</span></div>
+        <div class="style-btn s-modern" data-style="modern">Aa<span class="style-label">Modern</span></div>
+        <div class="style-btn s-neon" data-style="neon">Aa<span class="style-label">Neon</span></div>
+        <div class="style-btn s-typewriter" data-style="typewriter">Aa<span class="style-label">Typewriter</span></div>
+        <div class="style-btn s-strong" data-style="strong">AA<span class="style-label">Strong</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Text Color</h3>
+      <div class="color-row" id="textColorRow"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Font Size</h3>
+      <div class="control-row">
+        <label>Size <span id="fontSizeVal">32px</span></label>
+        <input type="range" id="fontSizeSlider" min="12" max="120" value="32">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Alignment</h3>
+      <div class="align-row">
+        <button class="align-btn active" data-align="left">&#9776;</button>
+        <button class="align-btn" data-align="center">&#9776;</button>
+        <button class="align-btn" data-align="right">&#9776;</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Text Background</h3>
+      <div class="bg-options">
+        <button class="bg-option active" data-bg="none">None</button>
+        <button class="bg-option" data-bg="solid">Solid</button>
+        <button class="bg-option" data-bg="semi">Semi</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Background Color</h3>
+      <div class="color-row" id="bgHighlightColorRow"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Letter Spacing</h3>
+      <div class="control-row">
+        <label>Spacing <span id="letterSpacingVal">0px</span></label>
+        <input type="range" id="letterSpacingSlider" min="-2" max="10" value="0" step="0.5">
+      </div>
+    </div>
+
+    <div class="sidebar-section" id="noSelectionMsg">
+      <div class="no-selection">Click a text layer to edit its properties</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Constants
+// ============================================================
+const STORY_W = 1080;
+const STORY_H = 1920;
+const FRAME_W = 360;
+const FRAME_H = 640;
+const SCALE = FRAME_W / STORY_W; // 0.333...
+
+// ============================================================
+// Text style definitions
+// ============================================================
+const TEXT_STYLES = {
+  classic: {
+    fontFamily: "'Roboto', sans-serif",
+    fontWeight: '400',
+    textTransform: 'none',
+    defaultSize: 32,
+    shadow: 'none',
+    glow: false,
+  },
+  modern: {
+    fontFamily: "'Quicksand', sans-serif",
+    fontWeight: '300',
+    textTransform: 'none',
+    defaultSize: 28,
+    shadow: 'none',
+    glow: false,
+  },
+  neon: {
+    fontFamily: "'Russo One', sans-serif",
+    fontWeight: '400',
+    textTransform: 'none',
+    defaultSize: 36,
+    shadow: 'neon', // special
+    glow: true,
+  },
+  typewriter: {
+    fontFamily: "'Courier Prime', monospace",
+    fontWeight: '400',
+    textTransform: 'none',
+    defaultSize: 26,
+    shadow: 'none',
+    glow: false,
+  },
+  strong: {
+    fontFamily: "'Anton', sans-serif",
+    fontWeight: '400',
+    textTransform: 'uppercase',
+    defaultSize: 48,
+    shadow: 'none',
+    glow: false,
+  },
+};
+
+// ============================================================
+// Color presets
+// ============================================================
+const COLOR_PRESETS = [
+  '#ffffff', '#000000', '#ef4444', '#f97316', '#eab308',
+  '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#f472b6', '#a855f7', '#14b8a6', '#f59e0b',
+];
+
+// ============================================================
+// Emoji data
+// ============================================================
+const EMOJI_CATEGORIES = [
+  { name: 'Smileys', icon: '😀', emojis: '😀😃😄😁😆😅🤣😂🙂🙃😉😊😇🥰😍🤩😘😗😚😙🥲😋😛😜🤪😝🤑🤗🤭🤫🤔🫡🤐🤨😐😑😶🫥😏😒🙄😬🤥🫠😌😔😪🤤😴😷🤒🤕🤢🤮🤧🥵🥶🥴😵🤯🤠🥳🥸😎🤓🧐😕🫤😟🙁😮😯😲😳🥺🥹😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️' },
+  { name: 'Hands', icon: '👋', emojis: '👋🤚🖐️✋🖖🫱🫲🫳🫴👌🤌🤏✌️🤞🫰🤟🤘🤙👈👉👆🖕👇☝️🫵👍👎✊👊🤛🤜👏🙌🫶👐🤲🤝🙏💪🦾🖖👆' },
+  { name: 'Hearts', icon: '❤️', emojis: '❤️🧡💛💚💙💜🖤🤍🤎💔❣️💕💞💓💗💖💘💝💟♥️❤️‍🔥❤️‍🩹' },
+  { name: 'Animals', icon: '🐶', emojis: '🐶🐱🐭🐹🐰🦊🐻🐼🐻‍❄️🐨🐯🦁🐮🐷🐽🐸🐵🙈🙉🙊🐔🐧🐦🐤🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🪱🐛🦋🐌🐞🐜🪰🪲🪳🦟🦗🕷️🦂🐢🐍🦎🦖🦕🐙🦑🦐🦞🦀🐡🐠🐟🐬🐳🐋🦈🦭🐊🐅🐆🦓🦍🦧🐘🦛🦏🐪🐫🦒🦘🦬🐃🐂🐄🐎🐖🐏🐑🦙🐐🦌🐕🐩🦮🐈🐓🦃🦤🦚🦜🦢🦩🕊️🐇🦝🦨🦡🦫🦦🦥🐁🐀🐿️🦔🐾🐉🐲' },
+  { name: 'Food', icon: '🍕', emojis: '🍏🍎🍐🍊🍋🍌🍉🍇🍓🫐🍈🍒🍑🥭🍍🥥🥝🍅🍆🥑🥦🥬🥒🌶️🫑🌽🥕🫒🧄🧅🥔🍠🫘🥐🍞🥖🥨🧀🥚🍳🧈🥞🧇🥓🥩🍗🍖🦴🌭🍔🍟🍕🫓🥪🥙🧆🌮🌯🫔🥗🥘🫕🥫🍝🍜🍲🍛🍣🍱🥟🦪🍤🍙🍚🍘🍥🥠🥮🍢🍡🍧🍨🍦🥧🧁🍰🎂🍮🍭🍬🍫🍿🍩🍪🌰🥜🍯🥛🍼🫖☕🍵🧃🥤🧋🫙🍶🍺🍻🥂🍷🫗🥃🍸🍹🧉🍾🧊🥄🍴🍽️🥣🥡🥢🧂' },
+  { name: 'Travel', icon: '🌍', emojis: '🌍🌎🌏🌐🗺️🧭🏔️⛰️🌋🗻🏕️🏖️🏜️🏝️🏞️🏟️🏛️🏗️🧱🪨🪵🛖🏘️🏚️🏠🏡🏢🏣🏤🏥🏦🏨🏩🏪🏫🏬🏭🏯🏰💒🗼🗽⛪🕌🛕🕍⛩️🕋⛲⛺🌁🌃🏙️🌄🌅🌆🌇🌉♨️🎠🛝🎡🎢💈🎪🚂🚃🚄🚅🚆🚇🚈🚉🚊🚝🚞🚋🚌🚍🚎🚐🚑🚒🚓🚔🚕🚖🚗🚘🚙🛻🚚🚛🚜🏎️🏍️🛵🦽🦼🛺🚲🛴🛹🛼🚏🛣️🛤️🛞⛽🛞🚨🚥🚦🛑🚧⚓🛟⛵🛶🚤🛳️⛴️🛥️🚢✈️🛩️🛫🛬🪂💺🚁🚟🚠🚡🛰️🚀🛸' },
+  { name: 'Activities', icon: '⚽', emojis: '⚽🏀🏈⚾🥎🎾🏐🏉🥏🎱🪀🏓🏸🏒🏑🥍🏏🪃🥅⛳🪁🏹🎣🤿🥊🥋🎽🛹🛼🛷⛸️🥌🎿⛷️🏂🪂🏋️🤸🤺⛹️🤾🏌️🏇🧘🏄🏊🤽🚣🧗🚵🚴🏆🥇🥈🥉🏅🎖️🏵️🎗️🎫🎟️🎪🤹🎭🩰🎨🎬🎤🎧🎼🎹🥁🪘🎷🎺🎸🪕🎻🪗🎲♟️🎯🎳🎮🕹️🎰' },
+  { name: 'Objects', icon: '💡', emojis: '⌚📱📲💻⌨️🖥️🖨️🖱️🖲️💽💾💿📀🧮🎥🎞️📽️🎬📺📷📸📹📼🔍🔎🕯️💡🔦🏮🪔📔📕📖📗📘📙📚📓📒📃📜📄📰🗞️📑🔖🏷️💰🪙💴💵💶💷💸💳🧾💹✉️📧📨📩📤📥📦📫📪📬📭📮🗳️✏️✒️🖋️🖊️🖌️🖍️📝💼📁📂🗂️📅📆🗒️🗓️📇📈📉📊📋📌📍📎🖇️📏📐✂️🗃️🗄️🗑️🔒🔓🔏🔐🔑🗝️🔨🪓⛏️⚒️🛠️🗡️⚔️💣🪃🏹🛡️🪚🔧🪛🔩⚙️🗜️⚖️🦯🔗⛓️🪝🧰🧲🪜' },
+  { name: 'Symbols', icon: '💯', emojis: '❤️🧡💛💚💙💜🖤🤍🤎💯💢💥💫💦💨🕳️💬👁️‍🗨️🗨️🗯️💭💤🏁🚩🎌🏴🏳️🏳️‍🌈🏳️‍⚧️☀️🌤️⛅🌥️☁️🌦️🌧️⛈️🌩️🌨️❄️☃️⛄🌬️💨🌪️🌫️🌈🌂☂️☔⛱️⚡❄️🔥💧🌊✨⭐🌟💫✴️☄️🌙🌛🌜🌝🌞⭕❌⛔📛🚫💟♾️' },
+  { name: 'Flags', icon: '🏁', emojis: '🏁🚩🎌🏴🏳️🏳️‍🌈🏳️‍⚧️🇺🇸🇬🇧🇫🇷🇩🇪🇮🇹🇪🇸🇵🇹🇧🇷🇯🇵🇰🇷🇨🇳🇮🇳🇷🇺🇦🇺🇨🇦🇲🇽🇦🇷🇨🇴🇳🇱🇧🇪🇨🇭🇦🇹🇸🇪🇳🇴🇩🇰🇫🇮🇮🇪🇵🇱🇨🇿🇬🇷🇹🇷🇸🇦🇦🇪🇪🇬🇿🇦🇳🇬🇰🇪🇹🇭🇻🇳🇮🇩🇵🇭🇲🇾🇸🇬🇳🇿🇺🇦🇮🇱🇵🇰🇧🇩🇱🇰' },
+];
+
+// ============================================================
+// State
+// ============================================================
+const state = {
+  bgImage: null,
+  bgColor: '#000000',
+  layers: [],       // Array of { id, type:'text'|'emoji', ... }
+  selectedLayerId: null,
+  nextId: 0,
+};
+
+// ============================================================
+// DOM refs
+// ============================================================
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+
+const bgCanvas = $('#bgCanvas');
+const storyFrame = $('#storyFrame');
+const bgFileInput = $('#bgFileInput');
+const emojiPicker = $('#emojiPicker');
+const emojiGrid = $('#emojiGrid');
+const emojiSearch = $('#emojiSearch');
+const emojiCategories = $('#emojiCategories');
+const layerList = $('#layerList');
+const rightPanel = $('#rightPanel');
+
+// ============================================================
+// Background
+// ============================================================
+$('#uploadZone').addEventListener('click', () => bgFileInput.click());
+$('#uploadZone').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; });
+$('#uploadZone').addEventListener('dragleave', e => { e.currentTarget.style.borderColor = ''; });
+$('#uploadZone').addEventListener('drop', e => {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = '';
+  if (e.dataTransfer.files.length) loadBgImage(e.dataTransfer.files[0]);
+});
+
+bgFileInput.addEventListener('change', () => {
+  if (bgFileInput.files.length) loadBgImage(bgFileInput.files[0]);
+  bgFileInput.value = '';
+});
+
+$('#bgColorBtn').addEventListener('click', () => $('#bgColorPicker').click());
+$('#bgColorPicker').addEventListener('input', e => {
+  state.bgColor = e.target.value;
+  state.bgImage = null;
+  renderBackground();
+});
+
+function loadBgImage(file) {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    state.bgImage = img;
+    renderBackground();
+  };
+  img.src = url;
+}
+
+function renderBackground() {
+  const ctx = bgCanvas.getContext('2d');
+  const w = bgCanvas.width;
+  const h = bgCanvas.height;
+
+  if (state.bgImage) {
+    const img = state.bgImage;
+    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = state.bgColor;
+    ctx.fillRect(0, 0, w, h);
+  }
+}
+
+// ============================================================
+// Layer management
+// ============================================================
+function createTextLayer(text = 'Tap to edit') {
+  const id = state.nextId++;
+  const layer = {
+    id,
+    type: 'text',
+    text,
+    style: 'classic',
+    color: '#ffffff',
+    fontSize: 32,
+    textAlign: 'center',
+    textBg: 'none',       // none | solid | semi
+    textBgColor: '#000000',
+    letterSpacing: 0,
+    x: FRAME_W / 2,       // center position (display coords)
+    y: FRAME_H / 2,
+    rotation: 0,
+    scaleF: 1,
+  };
+  state.layers.push(layer);
+  renderLayerDOM(layer);
+  selectLayer(id);
+  updateLayerList();
+  return layer;
+}
+
+function createEmojiLayer(emoji) {
+  const id = state.nextId++;
+  const layer = {
+    id,
+    type: 'emoji',
+    text: emoji,
+    fontSize: 64,
+    x: FRAME_W / 2,
+    y: FRAME_H / 2,
+    rotation: 0,
+    scaleF: 1,
+  };
+  state.layers.push(layer);
+  renderLayerDOM(layer);
+  selectLayer(id);
+  updateLayerList();
+  return layer;
+}
+
+function removeLayer(id) {
+  state.layers = state.layers.filter(l => l.id !== id);
+  const el = storyFrame.querySelector(`[data-layer-id="${id}"]`);
+  if (el) el.remove();
+  if (state.selectedLayerId === id) {
+    state.selectedLayerId = null;
+    updateRightPanel();
+  }
+  updateLayerList();
+}
+
+function selectLayer(id) {
+  state.selectedLayerId = id;
+  // Update DOM selection
+  storyFrame.querySelectorAll('.text-layer').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.dataset.layerId) === id);
+  });
+  updateRightPanel();
+  updateLayerList();
+}
+
+function getSelectedLayer() {
+  return state.layers.find(l => l.id === state.selectedLayerId) || null;
+}
+
+// ============================================================
+// Render layer as DOM element
+// ============================================================
+function renderLayerDOM(layer) {
+  let el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'text-layer';
+    el.dataset.layerId = layer.id;
+
+    // Rotate handle
+    const rotHandle = document.createElement('div');
+    rotHandle.className = 'rotate-handle';
+    el.appendChild(rotHandle);
+
+    // Delete handle
+    const delHandle = document.createElement('div');
+    delHandle.className = 'delete-handle';
+    delHandle.textContent = '×';
+    delHandle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeLayer(layer.id);
+    });
+    el.appendChild(delHandle);
+
+    // Make text editable on double-click
+    if (layer.type === 'text') {
+      el.contentEditable = 'false';
+      el.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        el.contentEditable = 'true';
+        el.classList.add('editing');
+        el.focus();
+        // Select all text
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+
+      el.addEventListener('blur', () => {
+        el.contentEditable = 'false';
+        el.classList.remove('editing');
+        layer.text = el.innerText || 'Text';
+        updateLayerList();
+      });
+
+      el.addEventListener('input', () => {
+        layer.text = el.innerText;
+      });
+
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          el.blur();
+        }
+        e.stopPropagation();
+      });
+    }
+
+    // Click to select
+    el.addEventListener('mousedown', (e) => {
+      if (el.contentEditable === 'true') return;
+      e.preventDefault();
+      selectLayer(layer.id);
+      startDrag(e, layer, el);
+    });
+
+    el.addEventListener('touchstart', (e) => {
+      if (el.contentEditable === 'true') return;
+      selectLayer(layer.id);
+      startTouchDrag(e, layer, el);
+    }, { passive: false });
+
+    // Rotate handle drag
+    setupRotateHandle(rotHandle, layer, el);
+
+    storyFrame.appendChild(el);
+  }
+
+  applyLayerStyles(el, layer);
+}
+
+function applyLayerStyles(el, layer) {
+  if (layer.type === 'text') {
+    const styleDef = TEXT_STYLES[layer.style] || TEXT_STYLES.classic;
+    el.style.fontFamily = styleDef.fontFamily;
+    el.style.fontWeight = styleDef.fontWeight;
+    el.style.textTransform = styleDef.textTransform;
+    el.style.fontSize = (layer.fontSize * SCALE) + 'px';
+    el.style.color = layer.color;
+    el.style.textAlign = layer.textAlign;
+    el.style.letterSpacing = (layer.letterSpacing * SCALE) + 'px';
+
+    // Text background
+    if (layer.textBg === 'solid') {
+      el.style.backgroundColor = layer.textBgColor;
+      el.style.borderRadius = '4px';
+      el.style.padding = '4px 10px';
+    } else if (layer.textBg === 'semi') {
+      // Parse color and add alpha
+      const c = layer.textBgColor;
+      el.style.backgroundColor = c + '88';
+      el.style.borderRadius = '4px';
+      el.style.padding = '4px 10px';
+    } else {
+      el.style.backgroundColor = 'transparent';
+    }
+
+    // Neon glow
+    if (styleDef.glow) {
+      el.style.textShadow = `0 0 7px ${layer.color}, 0 0 10px ${layer.color}, 0 0 21px ${layer.color}, 0 0 42px ${layer.color}`;
+    } else {
+      el.style.textShadow = 'none';
+    }
+
+    // Set text if not editing
+    if (el.contentEditable !== 'true') {
+      el.childNodes.forEach(n => {
+        if (n.nodeType === 3) n.remove(); // remove old text nodes
+      });
+      // Keep handles, set text
+      const existingText = Array.from(el.childNodes).find(n => n.nodeType === 3);
+      if (!existingText) {
+        el.insertBefore(document.createTextNode(layer.text), el.firstChild);
+      } else {
+        existingText.textContent = layer.text;
+      }
+    }
+  } else if (layer.type === 'emoji') {
+    el.style.fontSize = (layer.fontSize * SCALE) + 'px';
+    el.style.lineHeight = '1';
+    el.style.background = 'transparent';
+    // Set emoji text
+    const existingText = Array.from(el.childNodes).find(n => n.nodeType === 3);
+    if (!existingText) {
+      el.insertBefore(document.createTextNode(layer.text), el.firstChild);
+    } else {
+      existingText.textContent = layer.text;
+    }
+  }
+
+  // Position (centered)
+  el.style.left = layer.x + 'px';
+  el.style.top = layer.y + 'px';
+  el.style.transform = `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scaleF})`;
+}
+
+// ============================================================
+// Drag to move
+// ============================================================
+let dragState = null;
+
+function startDrag(e, layer, el) {
+  const frameRect = storyFrame.getBoundingClientRect();
+  dragState = {
+    layer,
+    el,
+    startMouseX: e.clientX,
+    startMouseY: e.clientY,
+    startX: layer.x,
+    startY: layer.y,
+    frameRect,
+  };
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (!dragState) return;
+  const { layer, el, startMouseX, startMouseY, startX, startY } = dragState;
+  const dx = e.clientX - startMouseX;
+  const dy = e.clientY - startMouseY;
+  layer.x = startX + dx;
+  layer.y = startY + dy;
+  el.style.left = layer.x + 'px';
+  el.style.top = layer.y + 'px';
+});
+
+document.addEventListener('mouseup', () => { dragState = null; });
+
+function startTouchDrag(e, layer, el) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  dragState = {
+    layer,
+    el,
+    startMouseX: touch.clientX,
+    startMouseY: touch.clientY,
+    startX: layer.x,
+    startY: layer.y,
+  };
+}
+
+document.addEventListener('touchmove', (e) => {
+  if (!dragState) return;
+  const touch = e.touches[0];
+  const { layer, el, startMouseX, startMouseY, startX, startY } = dragState;
+  const dx = touch.clientX - startMouseX;
+  const dy = touch.clientY - startMouseY;
+  layer.x = startX + dx;
+  layer.y = startY + dy;
+  el.style.left = layer.x + 'px';
+  el.style.top = layer.y + 'px';
+}, { passive: false });
+
+document.addEventListener('touchend', () => { dragState = null; });
+
+// ============================================================
+// Rotate handle
+// ============================================================
+function setupRotateHandle(handle, layer, el) {
+  let rotating = false;
+  let centerX, centerY;
+
+  handle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    rotating = true;
+    const rect = el.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+
+    const onMove = (e2) => {
+      if (!rotating) return;
+      const angle = Math.atan2(e2.clientY - centerY, e2.clientX - centerX);
+      layer.rotation = Math.round((angle * 180 / Math.PI) + 90);
+      el.style.transform = `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scaleF})`;
+    };
+
+    const onUp = () => {
+      rotating = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// ============================================================
+// Click canvas to deselect
+// ============================================================
+$('#canvasArea').addEventListener('mousedown', (e) => {
+  if (e.target === $('#canvasArea') || e.target === storyFrame || e.target === bgCanvas) {
+    selectLayer(null);
+  }
+});
+
+// ============================================================
+// Add text / emoji buttons
+// ============================================================
+$('#addTextBtn').addEventListener('click', () => {
+  createTextLayer('Tap to edit');
+  closeEmojiPicker();
+});
+
+$('#toggleEmojiBtn').addEventListener('click', () => {
+  emojiPicker.classList.toggle('active');
+  if (emojiPicker.classList.contains('active')) {
+    renderEmojiCategory(0);
+  }
+});
+
+function closeEmojiPicker() {
+  emojiPicker.classList.remove('active');
+}
+
+// ============================================================
+// Emoji picker
+// ============================================================
+function initEmojiPicker() {
+  // Categories
+  EMOJI_CATEGORIES.forEach((cat, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-cat-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = cat.icon;
+    btn.title = cat.name;
+    btn.addEventListener('click', () => {
+      emojiCategories.querySelectorAll('.emoji-cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderEmojiCategory(i);
+    });
+    emojiCategories.appendChild(btn);
+  });
+
+  renderEmojiCategory(0);
+
+  // Search
+  emojiSearch.addEventListener('input', () => {
+    const q = emojiSearch.value.toLowerCase().trim();
+    if (!q) {
+      const activeIdx = Array.from(emojiCategories.children).findIndex(b => b.classList.contains('active'));
+      renderEmojiCategory(activeIdx >= 0 ? activeIdx : 0);
+      return;
+    }
+    // Search through all categories
+    const all = EMOJI_CATEGORIES.flatMap(c => [...c.emojis]);
+    // Can't really search by name without a name map, so just show all
+    renderEmojis(all.slice(0, 100));
+  });
+}
+
+function renderEmojiCategory(idx) {
+  const emojis = [...EMOJI_CATEGORIES[idx].emojis];
+  renderEmojis(emojis);
+}
+
+function renderEmojis(emojis) {
+  emojiGrid.innerHTML = '';
+  // Segment emojis from string (handles multi-codepoint emojis)
+  const segmenter = typeof Intl !== 'undefined' && Intl.Segmenter
+    ? new Intl.Segmenter('en', { granularity: 'grapheme' })
+    : null;
+
+  let emojiArr;
+  if (segmenter && typeof emojis === 'string') {
+    emojiArr = [...segmenter.segment(emojis)].map(s => s.segment);
+  } else if (Array.isArray(emojis)) {
+    if (typeof emojis[0] === 'string' && emojis[0].length <= 2) {
+      emojiArr = emojis;
+    } else {
+      // It's an array of individual emojis already
+      emojiArr = emojis;
+    }
+  } else {
+    // Fallback: split by codepoints
+    emojiArr = Array.from(emojis);
+  }
+
+  emojiArr.forEach(emoji => {
+    const item = document.createElement('div');
+    item.className = 'emoji-item';
+    item.textContent = emoji;
+    item.addEventListener('click', () => {
+      createEmojiLayer(emoji);
+      closeEmojiPicker();
+    });
+    emojiGrid.appendChild(item);
+  });
+}
+
+initEmojiPicker();
+
+// ============================================================
+// Right panel - text properties
+// ============================================================
+function initColorRow(containerId, presets, onSelect) {
+  const container = $(`#${containerId}`);
+  container.innerHTML = '';
+
+  presets.forEach(color => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.background = color;
+    swatch.dataset.color = color;
+    swatch.addEventListener('click', () => onSelect(color, swatch));
+    container.appendChild(swatch);
+  });
+
+  // Custom color
+  const custom = document.createElement('div');
+  custom.className = 'color-swatch-custom';
+  custom.innerHTML = '<input type="color" value="#ffffff">';
+  custom.querySelector('input').addEventListener('input', (e) => {
+    onSelect(e.target.value, custom);
+  });
+  container.appendChild(custom);
+}
+
+initColorRow('textColorRow', COLOR_PRESETS, (color) => {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'text') return;
+  layer.color = color;
+  const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+  if (el) applyLayerStyles(el, layer);
+  highlightActiveColor('textColorRow', color);
+});
+
+initColorRow('bgHighlightColorRow', ['#000000', '#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#eab308', '#8b5cf6', '#ec4899'], (color) => {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'text') return;
+  layer.textBgColor = color;
+  const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+  if (el) applyLayerStyles(el, layer);
+  highlightActiveColor('bgHighlightColorRow', color);
+});
+
+function highlightActiveColor(containerId, color) {
+  const container = $(`#${containerId}`);
+  container.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === color);
+  });
+}
+
+// Style buttons
+$$('.style-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layer = getSelectedLayer();
+    if (!layer || layer.type !== 'text') return;
+    layer.style = btn.dataset.style;
+    const styleDef = TEXT_STYLES[layer.style];
+    layer.fontSize = styleDef.defaultSize;
+    $('#fontSizeSlider').value = layer.fontSize;
+    $('#fontSizeVal').textContent = layer.fontSize + 'px';
+    $$('.style-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+    if (el) applyLayerStyles(el, layer);
+  });
+});
+
+// Font size slider
+$('#fontSizeSlider').addEventListener('input', (e) => {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  layer.fontSize = parseInt(e.target.value);
+  $('#fontSizeVal').textContent = layer.fontSize + 'px';
+  const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+  if (el) applyLayerStyles(el, layer);
+});
+
+// Letter spacing slider
+$('#letterSpacingSlider').addEventListener('input', (e) => {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'text') return;
+  layer.letterSpacing = parseFloat(e.target.value);
+  $('#letterSpacingVal').textContent = layer.letterSpacing + 'px';
+  const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+  if (el) applyLayerStyles(el, layer);
+});
+
+// Alignment
+$$('.align-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layer = getSelectedLayer();
+    if (!layer || layer.type !== 'text') return;
+    layer.textAlign = btn.dataset.align;
+    $$('.align-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+    if (el) applyLayerStyles(el, layer);
+  });
+});
+
+// Background highlight
+$$('.bg-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layer = getSelectedLayer();
+    if (!layer || layer.type !== 'text') return;
+    layer.textBg = btn.dataset.bg;
+    $$('.bg-option').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const el = storyFrame.querySelector(`[data-layer-id="${layer.id}"]`);
+    if (el) applyLayerStyles(el, layer);
+  });
+});
+
+// ============================================================
+// Update right panel based on selection
+// ============================================================
+function updateRightPanel() {
+  const layer = getSelectedLayer();
+  const sections = rightPanel.querySelectorAll('.sidebar-section');
+  const noSel = $('#noSelectionMsg');
+
+  if (!layer) {
+    sections.forEach(s => {
+      if (s !== noSel) s.style.display = 'none';
+    });
+    noSel.style.display = '';
+    return;
+  }
+
+  noSel.style.display = 'none';
+
+  if (layer.type === 'text') {
+    sections.forEach(s => { if (s !== noSel) s.style.display = ''; });
+
+    // Sync controls
+    $$('.style-btn').forEach(b => b.classList.toggle('active', b.dataset.style === layer.style));
+    highlightActiveColor('textColorRow', layer.color);
+    highlightActiveColor('bgHighlightColorRow', layer.textBgColor);
+    $('#fontSizeSlider').value = layer.fontSize;
+    $('#fontSizeVal').textContent = layer.fontSize + 'px';
+    $('#letterSpacingSlider').value = layer.letterSpacing;
+    $('#letterSpacingVal').textContent = layer.letterSpacing + 'px';
+    $$('.align-btn').forEach(b => b.classList.toggle('active', b.dataset.align === layer.textAlign));
+    $$('.bg-option').forEach(b => b.classList.toggle('active', b.dataset.bg === layer.textBg));
+  } else if (layer.type === 'emoji') {
+    // Only show font size for emoji
+    sections.forEach(s => { if (s !== noSel) s.style.display = 'none'; });
+    // Show font size section
+    sections[2].style.display = ''; // Font Size
+    $('#fontSizeSlider').value = layer.fontSize;
+    $('#fontSizeVal').textContent = layer.fontSize + 'px';
+  }
+}
+
+// ============================================================
+// Layer list
+// ============================================================
+function updateLayerList() {
+  layerList.innerHTML = '';
+
+  if (state.layers.length === 0) {
+    layerList.innerHTML = '<div class="no-selection">No layers yet</div>';
+    return;
+  }
+
+  // Reverse order (top layer first)
+  [...state.layers].reverse().forEach(layer => {
+    const item = document.createElement('div');
+    item.className = 'layer-item' + (layer.id === state.selectedLayerId ? ' active' : '');
+
+    const preview = document.createElement('span');
+    preview.className = 'layer-preview';
+    preview.textContent = layer.type === 'emoji' ? layer.text : 'T';
+
+    const text = document.createElement('span');
+    text.className = 'layer-text';
+    text.textContent = layer.type === 'text' ? layer.text.substring(0, 20) : 'Emoji';
+
+    const del = document.createElement('span');
+    del.className = 'layer-delete';
+    del.textContent = '×';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeLayer(layer.id);
+    });
+
+    item.appendChild(preview);
+    item.appendChild(text);
+    item.appendChild(del);
+
+    item.addEventListener('click', () => selectLayer(layer.id));
+
+    layerList.appendChild(item);
+  });
+}
+
+// ============================================================
+// Export
+// ============================================================
+$('#exportBtn').addEventListener('click', exportStory);
+
+async function exportStory() {
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = STORY_W;
+  exportCanvas.height = STORY_H;
+  const ctx = exportCanvas.getContext('2d');
+
+  // Draw background
+  ctx.drawImage(bgCanvas, 0, 0);
+
+  // Draw each layer
+  const exportScale = STORY_W / FRAME_W; // ~3
+
+  for (const layer of state.layers) {
+    ctx.save();
+
+    // Position in full-res coords
+    const fx = layer.x * exportScale;
+    const fy = layer.y * exportScale;
+
+    ctx.translate(fx, fy);
+    ctx.rotate(layer.rotation * Math.PI / 180);
+    ctx.scale(layer.scaleF, layer.scaleF);
+
+    if (layer.type === 'text') {
+      const styleDef = TEXT_STYLES[layer.style] || TEXT_STYLES.classic;
+      const fontSize = layer.fontSize;
+
+      ctx.font = `${styleDef.fontWeight} ${fontSize}px ${styleDef.fontFamily.replace(/'/g, '')}`;
+      ctx.textAlign = layer.textAlign;
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = layer.color;
+
+      const lines = layer.text.split('\n');
+      const lineHeight = fontSize * 1.3;
+      const totalH = lines.length * lineHeight;
+      const startY = -totalH / 2 + lineHeight / 2;
+
+      // Measure max width for background
+      let maxW = 0;
+      lines.forEach(line => {
+        const m = ctx.measureText(line);
+        if (m.width > maxW) maxW = m.width;
+      });
+
+      // Draw text background
+      if (layer.textBg !== 'none') {
+        const padX = 20;
+        const padY = 8;
+        let bgX = -maxW / 2 - padX;
+        if (layer.textAlign === 'center') bgX = -maxW / 2 - padX;
+        else if (layer.textAlign === 'left') bgX = -padX;
+        else if (layer.textAlign === 'right') bgX = -maxW - padX;
+
+        ctx.fillStyle = layer.textBg === 'solid'
+          ? layer.textBgColor
+          : layer.textBgColor + '88';
+        ctx.beginPath();
+        const r = 8;
+        const bx = bgX;
+        const by = startY - lineHeight / 2 - padY;
+        const bw = maxW + padX * 2;
+        const bh = totalH + padY * 2;
+        ctx.roundRect(bx, by, bw, bh, r);
+        ctx.fill();
+        ctx.fillStyle = layer.color;
+      }
+
+      // Neon glow
+      if (styleDef.glow) {
+        ctx.shadowColor = layer.color;
+        ctx.shadowBlur = 30;
+      }
+
+      // Letter spacing
+      if (layer.letterSpacing !== 0) {
+        ctx.letterSpacing = layer.letterSpacing + 'px';
+      }
+
+      let displayText;
+      lines.forEach((line, i) => {
+        displayText = styleDef.textTransform === 'uppercase' ? line.toUpperCase() : line;
+        let tx = 0;
+        if (layer.textAlign === 'left') tx = -maxW / 2;
+        else if (layer.textAlign === 'right') tx = maxW / 2;
+        ctx.fillText(displayText, tx, startY + i * lineHeight);
+      });
+
+    } else if (layer.type === 'emoji') {
+      ctx.font = `${layer.fontSize}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(layer.text, 0, 0);
+    }
+
+    ctx.restore();
+  }
+
+  // Download
+  const blob = await new Promise(r => exportCanvas.toBlob(r, 'image/jpeg', 1.0));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'story_' + Date.now() + '.jpg';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ============================================================
+// New story
+// ============================================================
+$('#newStoryBtn').addEventListener('click', () => {
+  if (state.layers.length > 0 && !confirm('Clear current story?')) return;
+  state.layers.forEach(l => {
+    const el = storyFrame.querySelector(`[data-layer-id="${l.id}"]`);
+    if (el) el.remove();
+  });
+  state.layers = [];
+  state.selectedLayerId = null;
+  state.bgImage = null;
+  state.bgColor = '#000000';
+  renderBackground();
+  updateLayerList();
+  updateRightPanel();
+});
+
+// ============================================================
+// Keyboard shortcuts
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  // Don't intercept when editing text
+  if (document.activeElement && document.activeElement.contentEditable === 'true') return;
+  if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const layer = getSelectedLayer();
+    if (layer) {
+      e.preventDefault();
+      removeLayer(layer.id);
+    }
+  }
+
+  if (e.key === 'Escape') {
+    closeEmojiPicker();
+    selectLayer(null);
+  }
+});
+
+// ============================================================
+// Init
+// ============================================================
+renderBackground();
+updateRightPanel();
+</script>
+</body>
+</html>
