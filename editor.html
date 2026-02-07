@@ -153,12 +153,10 @@ body {
 .text-layer {
   position: absolute;
   cursor: grab;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
   outline: none;
   min-width: 40px;
   min-height: 24px;
-  max-width: 340px;
   padding: 4px 8px;
   transform-origin: center center;
   line-height: 1.3;
@@ -1356,6 +1354,39 @@ function renderEmojis(emojis) {
     item.className = 'emoji-item';
     item.textContent = emoji;
     item.addEventListener('click', () => {
+      // If a text layer is selected, insert emoji into it
+      const selectedLayer = getSelectedLayer();
+      if (selectedLayer && selectedLayer.type === 'text') {
+        const el = storyFrame.querySelector(`[data-layer-id="${selectedLayer.id}"]`);
+        if (el) {
+          // Put element into editing mode if not already
+          if (el.contentEditable !== 'true') {
+            el.contentEditable = 'true';
+            el.classList.add('editing');
+            el.focus();
+          }
+          // Insert emoji at cursor position (or end if no cursor)
+          const sel = window.getSelection();
+          if (sel.rangeCount > 0 && el.contains(sel.anchorNode)) {
+            // Insert at cursor
+            document.execCommand('insertText', false, emoji);
+          } else {
+            // Append to end — place cursor at end first
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false); // collapse to end
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('insertText', false, emoji);
+          }
+          selectedLayer.text = el.innerText;
+          updateLayerList();
+          closeEmojiPicker();
+          return;
+        }
+      }
+      // Otherwise create as standalone emoji layer
       createEmojiLayer(emoji);
       closeEmojiPicker();
     });
@@ -1364,6 +1395,14 @@ function renderEmojis(emojis) {
 }
 
 initEmojiPicker();
+
+// Prevent emoji picker clicks from stealing focus from text layers
+emojiPicker.addEventListener('mousedown', (e) => {
+  // Don't prevent on the search input so it can be focused
+  if (e.target === emojiSearch) return;
+  e.preventDefault();
+});
+
 
 // ============================================================
 // Right panel - text properties
