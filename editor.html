@@ -6,7 +6,7 @@
 <title>Instagram Story Editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Quicksand:wght@300;400&family=Russo+One&family=Courier+Prime&family=Anton&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Dancing+Script:wght@400;700&family=Courier+Prime:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Varela+Round&family=Archivo+Narrow:wght@400;700&family=Poiret+One&family=Comic+Neue:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -202,8 +202,10 @@ body {
 /* Style buttons */
 .style-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
 .style-btn {
@@ -228,11 +230,17 @@ body {
   display: block;
 }
 
-.style-btn.s-classic { font-family: 'Roboto', sans-serif; }
-.style-btn.s-modern { font-family: 'Quicksand', sans-serif; font-weight: 300; }
-.style-btn.s-neon { font-family: 'Russo One', sans-serif; text-shadow: 0 0 8px currentColor; }
-.style-btn.s-typewriter { font-family: 'Courier Prime', monospace; }
-.style-btn.s-strong { font-family: 'Anton', sans-serif; text-transform: uppercase; }
+.style-btn.s-classic { font-family: 'Inter', sans-serif; font-weight: 400; }
+.style-btn.s-modern { font-family: 'DM Sans', sans-serif; font-weight: 300; }
+.style-btn.s-neon { font-family: 'Dancing Script', cursive; text-shadow: 0 0 8px currentColor; }
+.style-btn.s-typewriter { font-family: 'Courier Prime', monospace; font-weight: 700; }
+.style-btn.s-strong { font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; }
+.style-btn.s-poster { font-family: 'Playfair Display', serif; font-weight: 900; }
+.style-btn.s-bubble { font-family: 'Varela Round', sans-serif; }
+.style-btn.s-squeeze { font-family: 'Archivo Narrow', sans-serif; font-weight: 700; letter-spacing: -0.5px; }
+.style-btn.s-deco { font-family: 'Poiret One', cursive; }
+.style-btn.s-comic { font-family: 'Comic Neue', cursive; }
+.style-btn.s-serif { font-family: 'Cormorant Garamond', serif; font-weight: 600; }
 
 /* Color picker row */
 .color-row {
@@ -618,6 +626,12 @@ input[type="file"].hidden { display: none; }
         <div class="style-btn s-neon" data-style="neon">Aa<span class="style-label">Neon</span></div>
         <div class="style-btn s-typewriter" data-style="typewriter">Aa<span class="style-label">Typewriter</span></div>
         <div class="style-btn s-strong" data-style="strong">AA<span class="style-label">Strong</span></div>
+        <div class="style-btn s-poster" data-style="poster">Aa<span class="style-label">Poster</span></div>
+        <div class="style-btn s-bubble" data-style="bubble">Aa<span class="style-label">Bubble</span></div>
+        <div class="style-btn s-squeeze" data-style="squeeze">AA<span class="style-label">Squeeze</span></div>
+        <div class="style-btn s-deco" data-style="deco">Aa<span class="style-label">Deco</span></div>
+        <div class="style-btn s-comic" data-style="comic">Aa<span class="style-label">Comic</span></div>
+        <div class="style-btn s-serif" data-style="serif">Aa<span class="style-label">Serif</span></div>
       </div>
     </div>
 
@@ -686,43 +700,91 @@ const SCALE = FRAME_W / STORY_W; // 0.333...
 // ============================================================
 const TEXT_STYLES = {
   classic: {
-    fontFamily: "'Roboto', sans-serif",
+    label: 'Classic',
+    fontFamily: "'Inter', sans-serif",
     fontWeight: '400',
     textTransform: 'none',
     defaultSize: 32,
-    shadow: 'none',
     glow: false,
   },
   modern: {
-    fontFamily: "'Quicksand', sans-serif",
+    label: 'Modern',
+    fontFamily: "'DM Sans', sans-serif",
     fontWeight: '300',
     textTransform: 'none',
     defaultSize: 28,
-    shadow: 'none',
     glow: false,
   },
   neon: {
-    fontFamily: "'Russo One', sans-serif",
-    fontWeight: '400',
+    label: 'Neon',
+    fontFamily: "'Dancing Script', cursive",
+    fontWeight: '700',
     textTransform: 'none',
-    defaultSize: 36,
-    shadow: 'neon', // special
+    defaultSize: 40,
     glow: true,
   },
   typewriter: {
+    label: 'Typewriter',
     fontFamily: "'Courier Prime', monospace",
-    fontWeight: '400',
+    fontWeight: '700',
     textTransform: 'none',
     defaultSize: 26,
-    shadow: 'none',
     glow: false,
   },
   strong: {
-    fontFamily: "'Anton', sans-serif",
-    fontWeight: '400',
+    label: 'Strong',
+    fontFamily: "'Inter', sans-serif",
+    fontWeight: '900',
     textTransform: 'uppercase',
     defaultSize: 48,
-    shadow: 'none',
+    glow: false,
+  },
+  poster: {
+    label: 'Poster',
+    fontFamily: "'Playfair Display', serif",
+    fontWeight: '900',
+    textTransform: 'none',
+    defaultSize: 44,
+    glow: false,
+  },
+  bubble: {
+    label: 'Bubble',
+    fontFamily: "'Varela Round', sans-serif",
+    fontWeight: '400',
+    textTransform: 'none',
+    defaultSize: 34,
+    glow: false,
+  },
+  squeeze: {
+    label: 'Squeeze',
+    fontFamily: "'Archivo Narrow', sans-serif",
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    defaultSize: 42,
+    glow: false,
+  },
+  deco: {
+    label: 'Deco',
+    fontFamily: "'Poiret One', cursive",
+    fontWeight: '400',
+    textTransform: 'none',
+    defaultSize: 38,
+    glow: false,
+  },
+  comic: {
+    label: 'Comic',
+    fontFamily: "'Comic Neue', cursive",
+    fontWeight: '700',
+    textTransform: 'none',
+    defaultSize: 32,
+    glow: false,
+  },
+  serif: {
+    label: 'Serif',
+    fontFamily: "'Cormorant Garamond', serif",
+    fontWeight: '600',
+    textTransform: 'none',
+    defaultSize: 34,
     glow: false,
   },
 };
@@ -1475,7 +1537,7 @@ async function exportStory() {
       const styleDef = TEXT_STYLES[layer.style] || TEXT_STYLES.classic;
       const fontSize = layer.fontSize;
 
-      ctx.font = `${styleDef.fontWeight} ${fontSize}px ${styleDef.fontFamily.replace(/'/g, '')}`;
+      ctx.font = `${styleDef.fontWeight} ${fontSize}px ${styleDef.fontFamily}`;
       ctx.textAlign = layer.textAlign;
       ctx.textBaseline = 'middle';
       ctx.fillStyle = layer.color;
