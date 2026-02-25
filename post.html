@@ -810,6 +810,7 @@ function handleFiles(fileList) {
       file,
       filename: file.name,
       img: null,
+      loadState: 'loading', // loading | ready | error
       included: true,
       customized: false,
       fitMode: null,
@@ -831,11 +832,15 @@ function loadImage(entry) {
   img.onload = () => {
     URL.revokeObjectURL(url);
     entry.img = img;
+    entry.loadState = 'ready';
     renderThumbnail(entry);
+    updateUI();
   };
   img.onerror = () => {
     URL.revokeObjectURL(url);
-    state.images = state.images.filter(e => e.id !== entry.id);
+    entry.loadState = 'error';
+    entry.included = false;
+    showWarning(`Failed to decode "${entry.filename}". Remove it or replace it.`);
     updateUI();
   };
   img.src = url;
@@ -861,11 +866,19 @@ function updateUI() {
   headerActions.style.display = hasImages ? 'flex' : 'none';
   emptyState.style.display = 'none';
 
-  const checked = state.images.filter(e => e.included).length;
-  imageCountEl.textContent = `${state.images.length} image${state.images.length !== 1 ? 's' : ''} — ${checked} selected for export`;
+  const selected = state.images.filter(e => e.included);
+  const checked = selected.length;
+  const pendingSelected = selected.filter(e => e.loadState === 'loading').length;
+  const failed = state.images.filter(e => e.loadState === 'error').length;
+  const statusBits = [];
+  if (pendingSelected > 0) statusBits.push(`${pendingSelected} loading`);
+  if (failed > 0) statusBits.push(`${failed} failed`);
+  const statusText = statusBits.length ? ` (${statusBits.join(', ')})` : '';
+  imageCountEl.textContent = `${state.images.length} image${state.images.length !== 1 ? 's' : ''} — ${checked} selected for export${statusText}`;
 
-  $('#exportBtn').disabled = checked === 0;
-  $('#downloadIndividualBtn').disabled = checked === 0;
+  const exportBlocked = checked === 0 || pendingSelected > 0;
+  $('#exportBtn').disabled = exportBlocked;
+  $('#downloadIndividualBtn').disabled = exportBlocked;
 
   updateBgVisibility();
 }
@@ -1429,8 +1442,41 @@ editorOverlay.addEventListener('click', (e) => {
 // ============================================================
 let exportCancelled = false;
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function canvasToBlob(canvas, mimeType, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas serialization failed.'));
+        return;
+      }
+      resolve(blob);
+    }, mimeType, quality);
+  });
+}
+
+function makeUniqueFileName(baseName, suffix, usedNames) {
+  let candidate = `${baseName}${suffix}`;
+  let i = 2;
+  while (usedNames.has(candidate)) {
+    candidate = `${baseName}_${i}${suffix}`;
+    i += 1;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
 async function exportZip() {
-  const toExport = state.images.filter(e => e.included && e.img);
+  const selected = state.images.filter(e => e.included);
+  const pending = selected.filter(e => e.loadState === 'loading');
+  if (pending.length > 0) {
+    showWarning(`Please wait until all selected images finish loading (${pending.length} remaining).`);
+    return;
+  }
+  const toExport = selected.filter(e => e.img);
   if (toExport.length === 0) return;
 
   exportCancelled = false;
@@ -1439,30 +1485,41 @@ async function exportZip() {
   progressFill.style.width = '0%';
   progressText.textContent = `0 / ${toExport.length}`;
 
-  await new Promise(r => setTimeout(r, 50));
+  await sleep(50);
 
   try {
     const zip = new JSZip();
+    const usedNames = new Set();
+    const failed = [];
 
     for (let i = 0; i < toExport.length; i++) {
       if (exportCancelled) break;
       const entry = toExport[i];
-      const canvas = renderFullRes(entry);
-
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 1.0));
-      const baseName = entry.filename.replace(/\.[^.]+$/, '');
-      zip.file(`${baseName}_post.jpg`, blob);
+      try {
+        const canvas = renderFullRes(entry);
+        const blob = await canvasToBlob(canvas, 'image/jpeg', 1.0);
+        const baseName = entry.filename.replace(/\.[^.]+$/, '');
+        const exportName = makeUniqueFileName(baseName, '_post.jpg', usedNames);
+        zip.file(exportName, blob);
+      } catch (err) {
+        failed.push(entry.filename);
+        console.error('Entry export failed:', entry.filename, err);
+      }
 
       const pct = ((i + 1) / toExport.length * 100);
       progressFill.style.width = `${pct}%`;
       progressText.textContent = `${i + 1} / ${toExport.length}`;
 
-      await new Promise(r => setTimeout(r, 10));
+      await sleep(10);
     }
 
     if (!exportCancelled) {
+      const fileCount = Object.keys(zip.files).length;
+      if (fileCount === 0) {
+        throw new Error('No images were successfully rendered.');
+      }
       progressText.textContent = 'Creating ZIP...';
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE', streamFiles: true });
 
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
@@ -1470,6 +1527,12 @@ async function exportZip() {
       a.download = 'instagram_posts.zip';
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+      if (failed.length > 0) {
+        showWarning(`Export completed with ${failed.length} failed image(s). Check console for details.`);
+      } else {
+        hideWarning();
+      }
     }
   } catch (err) {
     console.error('Export failed:', err);
@@ -1480,7 +1543,13 @@ async function exportZip() {
 }
 
 async function downloadIndividually() {
-  const toExport = state.images.filter(e => e.included && e.img);
+  const selected = state.images.filter(e => e.included);
+  const pending = selected.filter(e => e.loadState === 'loading');
+  if (pending.length > 0) {
+    showWarning(`Please wait until all selected images finish loading (${pending.length} remaining).`);
+    return;
+  }
+  const toExport = selected.filter(e => e.img);
   if (toExport.length === 0) return;
 
   exportCancelled = false;
@@ -1489,21 +1558,23 @@ async function downloadIndividually() {
   progressFill.style.width = '0%';
   progressText.textContent = `0 / ${toExport.length}`;
 
-  await new Promise(r => setTimeout(r, 50));
+  await sleep(50);
 
   try {
+    const usedNames = new Set();
     for (let i = 0; i < toExport.length; i++) {
       if (exportCancelled) break;
       const entry = toExport[i];
       const canvas = renderFullRes(entry);
 
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 1.0));
+      const blob = await canvasToBlob(canvas, 'image/jpeg', 1.0);
       const baseName = entry.filename.replace(/\.[^.]+$/, '');
+      const exportName = makeUniqueFileName(baseName, '_post.jpg', usedNames);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${baseName}_post.jpg`;
+      a.download = exportName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
 
@@ -1511,7 +1582,7 @@ async function downloadIndividually() {
       progressFill.style.width = `${pct}%`;
       progressText.textContent = `${i + 1} / ${toExport.length}`;
 
-      await new Promise(r => setTimeout(r, 200));
+      await sleep(200);
     }
   } catch (err) {
     console.error('Download failed:', err);
