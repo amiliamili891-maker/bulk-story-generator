@@ -566,8 +566,9 @@ input[type="checkbox"] {
     <div class="setting-group">
       <label>Aspect Ratio</label>
       <select id="globalAspectRatio">
+        <option value="1:1">1:1 (1080 &times; 1080)</option>
         <option value="4:5" selected>4:5 (1080 &times; 1350)</option>
-        <option value="3:4">3:4 (1080 &times; 1440)</option>
+        <option value="9:16">9:16 (1080 &times; 1920)</option>
       </select>
     </div>
     <div class="setting-group">
@@ -689,8 +690,9 @@ const MAX_ZOOM_FACTOR = 3;
 
 // Aspect ratio presets
 const ASPECT_RATIOS = {
+  '1:1': { w: 1080, h: 1080 },
   '4:5': { w: 1080, h: 1350 },
-  '3:4': { w: 1080, h: 1440 },
+  '9:16': { w: 1080, h: 1920 },
 };
 
 function getPostH() {
