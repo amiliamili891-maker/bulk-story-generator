@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@sinco-lab/mcp-youtube-transcript": "^0.0.8"
+  }
+}
