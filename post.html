@@ -537,6 +537,7 @@ input[type="checkbox"] {
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #aaa; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 </head>
 <body>
 
@@ -553,7 +554,7 @@ input[type="checkbox"] {
   <div class="upload-zone" id="uploadZone">
     <div class="upload-zone-icon">&#128247;</div>
     <h2>Drop images here</h2>
-    <p>or click to browse — JPG, PNG, WebP, AVIF, HEIC &bull; Up to 50 images</p>
+    <p>or click to browse — JPG, PNG, WebP, AVIF, HEIC &bull; Up to 150 images</p>
     <button class="btn btn-primary">Choose Files</button>
     <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.avif,.heic,.heif">
   </div>
@@ -568,6 +569,7 @@ input[type="checkbox"] {
       <select id="globalAspectRatio">
         <option value="4:5" selected>4:5 (1080 &times; 1350)</option>
         <option value="3:4">3:4 (1080 &times; 1440)</option>
+        <option value="9:16">9:16 (1080 &times; 1920)</option>
       </select>
     </div>
     <div class="setting-group">
@@ -684,13 +686,14 @@ input[type="checkbox"] {
 // State
 // ============================================================
 const POST_W = 1080;
-const MAX_IMAGES = 50;
+const MAX_IMAGES = 150;
 const MAX_ZOOM_FACTOR = 3;
 
 // Aspect ratio presets
 const ASPECT_RATIOS = {
   '4:5': { w: 1080, h: 1350 },
   '3:4': { w: 1080, h: 1440 },
+  '9:16': { w: 1080, h: 1920 },
 };
 
 function getPostH() {
@@ -740,6 +743,7 @@ function isAcceptedFile(file) {
   return ACCEPTED_EXT.includes(ext);
 }
 
+fileInput.addEventListener('click', (e) => e.stopPropagation());
 uploadZone.addEventListener('click', () => fileInput.click());
 $('#addMoreBtn').addEventListener('click', () => fileInput.click());
 
@@ -825,16 +829,45 @@ function handleFiles(fileList) {
   updateUI();
 }
 
-function loadImage(entry) {
+function isHeic(file) {
+  if (file.type === 'image/heic' || file.type === 'image/heif') return true;
+  const ext = file.name.split('.').pop().toLowerCase();
+  return ext === 'heic' || ext === 'heif';
+}
+
+async function loadImage(entry) {
+  let blob = entry.file;
+
+  // Convert HEIC/HEIF to JPEG so the browser can render it
+  if (isHeic(entry.file)) {
+    try {
+      showWarning(`Converting "${entry.filename}" from HEIC...`);
+      let result = await heic2any({ blob: entry.file, toType: 'image/jpeg', quality: 0.92 });
+      // heic2any may return an array for multi-image HEIC — take the first
+      if (Array.isArray(result)) result = result[0];
+      blob = result;
+      entry.file = new File([blob], entry.filename.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), { type: 'image/jpeg' });
+      hideWarning();
+    } catch (err) {
+      console.error('HEIC conversion error:', err);
+      showWarning(`Failed to convert "${entry.filename}". Remove it or replace it.`);
+      state.images = state.images.filter(e => e.id !== entry.id);
+      updateUI();
+      return;
+    }
+  }
+
   const img = new Image();
-  const url = URL.createObjectURL(entry.file);
+  const url = URL.createObjectURL(blob);
   img.onload = () => {
     URL.revokeObjectURL(url);
     entry.img = img;
     renderThumbnail(entry);
+    updateUI();
   };
   img.onerror = () => {
     URL.revokeObjectURL(url);
+    showWarning(`Failed to decode "${entry.filename}". Remove it or replace it.`);
     state.images = state.images.filter(e => e.id !== entry.id);
     updateUI();
   };
@@ -862,7 +895,10 @@ function updateUI() {
   emptyState.style.display = 'none';
 
   const checked = state.images.filter(e => e.included).length;
-  imageCountEl.textContent = `${state.images.length} image${state.images.length !== 1 ? 's' : ''} — ${checked} selected for export`;
+  const loading = state.images.filter(e => !e.img).length;
+  let statusText = `${state.images.length} image${state.images.length !== 1 ? 's' : ''} — ${checked} selected for export`;
+  if (loading > 0) statusText += ` (${loading} still converting...)`;
+  imageCountEl.textContent = statusText;
 
   $('#exportBtn').disabled = checked === 0;
   $('#downloadIndividualBtn').disabled = checked === 0;
@@ -1430,6 +1466,11 @@ editorOverlay.addEventListener('click', (e) => {
 let exportCancelled = false;
 
 async function exportZip() {
+  const loading = state.images.filter(e => e.included && !e.img).length;
+  if (loading > 0) {
+    showWarning(`${loading} image${loading !== 1 ? 's are' : ' is'} still converting. Please wait for all conversions to finish before exporting.`);
+    return;
+  }
   const toExport = state.images.filter(e => e.included && e.img);
   if (toExport.length === 0) return;
 
@@ -1480,6 +1521,11 @@ async function exportZip() {
 }
 
 async function downloadIndividually() {
+  const loading = state.images.filter(e => e.included && !e.img).length;
+  if (loading > 0) {
+    showWarning(`${loading} image${loading !== 1 ? 's are' : ' is'} still converting. Please wait for all conversions to finish before downloading.`);
+    return;
+  }
   const toExport = state.images.filter(e => e.included && e.img);
   if (toExport.length === 0) return;
 
